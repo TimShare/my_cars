@@ -79,3 +79,6 @@ class Car:
     photos: List[str] = field(default_factory=list)
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
+    model: Optional[Model] = None
+    brand: Optional[Brand] = None
+    

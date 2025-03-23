@@ -107,9 +107,12 @@ class CarResponse(CarBase):
         from_attributes = True
 
 
-class CarDetailResponse(CarResponse):
-    brand: BrandResponse
-    model: ModelResponse
+class CarDetailResponse(CarBase):
+    id: UUID
+    model: Optional[ModelResponse] = None
+    brand: Optional[BrandResponse] = None
+    created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True

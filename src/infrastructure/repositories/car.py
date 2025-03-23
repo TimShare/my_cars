@@ -2,6 +2,7 @@ from typing import List, Optional
 from uuid import UUID
 from sqlalchemy import select, delete, and_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from core.entites import Car as CarEntity
 from core.entites import Brand as BrandEntity
@@ -144,8 +145,10 @@ class CarRepository(ICarRepository):
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    def _to_entity(self, car: Car) -> CarEntity:
-        return CarEntity(
+    def _to_entity(
+        self, car: Car, model: Optional[Model] = None, brand: Optional[Brand] = None
+    ) -> CarEntity:
+        car_entity = CarEntity(
             id=car.id,
             model_id=car.model_id,
             year=car.year,
@@ -167,16 +170,48 @@ class CarRepository(ICarRepository):
             updated_at=car.updated_at,
         )
 
+        # Если предоставлены модель и бренд, добавляем их в сущность
+        if model:
+            model_entity = ModelEntity(
+                id=model.id,
+                name=model.name,
+                brand_id=model.brand_id,
+                year_from=model.year_from,
+                year_to=model.year_to,
+                created_at=model.created_at,
+                updated_at=model.updated_at,
+            )
+            car_entity.model = model_entity
+
+        if brand:
+            brand_entity = BrandEntity(
+                id=brand.id,
+                name=brand.name,
+                country=brand.country,
+                logo_url=brand.logo_url,
+                created_at=brand.created_at,
+                updated_at=brand.updated_at,
+            )
+            car_entity.brand = brand_entity
+
+        return car_entity
+
     async def get_all(
         self,
         model_id: Optional[UUID] = None,
         brand_id: Optional[UUID] = None,
         condition: Optional[str] = None,
-        seller_id: Optional[UUID] = None,  # <-- Добавлено
+        seller_id: Optional[UUID] = None,
         limit: int = 100,
         offset: int = 0,
+        include_brand_model: bool = False,
     ) -> List[CarEntity]:
-        query = select(Car)
+        # Базовый запрос
+        if include_brand_model:
+            # Если нужно включить модель и бренд, используем joinedload
+            query = select(Car).options(joinedload(Car.model).joinedload(Model.brand))
+        else:
+            query = select(Car)
 
         # Применяем фильтры, если они указаны
         filters = []
@@ -184,14 +219,15 @@ class CarRepository(ICarRepository):
             filters.append(Car.model_id == model_id)
 
         if brand_id:
-            # Для фильтрации по бренду нужно присоединить модель
-            query = query.join(Model, Car.model_id == Model.id)
+            # Если нужно фильтровать по бренду, всегда выполняем join
+            if not include_brand_model:
+                query = query.join(Model, Car.model_id == Model.id)
             filters.append(Model.brand_id == brand_id)
 
         if condition:
             filters.append(Car.condition == condition)
 
-        if seller_id:  # <-- Добавлено
+        if seller_id:
             filters.append(Car.seller_id == seller_id)
 
         if filters:
@@ -201,15 +237,46 @@ class CarRepository(ICarRepository):
         query = query.limit(limit).offset(offset).order_by(Car.created_at.desc())
 
         result = await self.session.execute(query)
-        return [self._to_entity(car) for car in result.scalars().all()]
 
-    async def get_by_id(self, id: UUID) -> Optional[CarEntity]:
-        stmt = select(Car).where(Car.id == id)
-        result = await self.session.execute(stmt)
-        car = result.scalars().first()
-        if not car:
-            return None
-        return self._to_entity(car)
+        cars = []
+        if include_brand_model:
+            # Если загружаем с моделью и брендом, результат будет содержать все связанные объекты
+            for car_obj in result.unique().scalars().all():
+                model_obj = car_obj.model
+                brand_obj = model_obj.brand if model_obj else None
+                cars.append(self._to_entity(car_obj, model_obj, brand_obj))
+        else:
+            cars = [self._to_entity(car) for car in result.scalars().all()]
+
+        return cars
+
+    async def get_by_id(
+        self, id: UUID, include_brand_model: bool = False
+    ) -> Optional[CarEntity]:
+        if include_brand_model:
+            query = (
+                select(Car)
+                .options(joinedload(Car.model).joinedload(Model.brand))
+                .where(Car.id == id)
+            )
+        else:
+            query = select(Car).where(Car.id == id)
+
+        result = await self.session.execute(query)
+
+        if include_brand_model:
+            car_obj = result.unique().scalars().first()
+            if not car_obj:
+                return None
+
+            model_obj = car_obj.model
+            brand_obj = model_obj.brand if model_obj else None
+            return self._to_entity(car_obj, model_obj, brand_obj)
+        else:
+            car = result.scalars().first()
+            if not car:
+                return None
+            return self._to_entity(car)
 
     async def create(self, car: CarEntity) -> CarEntity:
         db_car = Car(

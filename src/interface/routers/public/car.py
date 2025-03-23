@@ -2,14 +2,19 @@ from typing import List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, Request, Response, Query
 from interface.dependencies import get_car_service
-from interface.schemas.car import CarResponse, ModelResponse, BrandResponse
+from interface.schemas.car import (
+    CarResponse,
+    ModelResponse,
+    BrandResponse,
+    CarDetailResponse,
+)
 from core.services import CarService
 
 router = APIRouter(prefix="/public/cars", tags=["public_cars"])
 
 
 # Полностью публичные эндпоинты (не требуют авторизации)
-@router.get("", response_model=List[CarResponse])
+@router.get("", response_model=List[CarDetailResponse])
 async def get_all_cars_public(
     request: Request,
     response: Response,
@@ -27,11 +32,12 @@ async def get_all_cars_public(
         condition=condition,
         limit=limit,
         offset=offset,
+        include_brand_model=True,  # Включаем информацию о модели и бренде
     )
-    return [CarResponse.model_validate(car) for car in cars]
+    return [CarDetailResponse.model_validate(car) for car in cars]
 
 
-@router.get("/{car_id}", response_model=CarResponse)
+@router.get("/{car_id}", response_model=CarDetailResponse)
 async def get_car_public(
     car_id: UUID,
     request: Request,
@@ -39,8 +45,8 @@ async def get_car_public(
     car_service: CarService = Depends(get_car_service),
 ):
     """Публичное получение информации об автомобиле по ID"""
-    car = await car_service.get_car(car_id)
-    return CarResponse.model_validate(car)
+    car = await car_service.get_car(car_id, include_brand_model=True)
+    return CarDetailResponse.model_validate(car)
 
 
 @router.get("/brands", response_model=List[BrandResponse])

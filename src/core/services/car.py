@@ -105,7 +105,11 @@ class CarService:
         seller_id: Optional[UUID] = None,  # <-- Добавлено
         limit: int = 100,
         offset: int = 0,
+        include_brand_model: bool = True,  # По умолчанию включаем
     ) -> List[Car]:
+        """
+        Получение списка автомобилей с информацией о моделях и брендах
+        """
         return await self.car_repository.get_all(
             model_id=model_id,
             brand_id=brand_id,
@@ -113,10 +117,16 @@ class CarService:
             seller_id=seller_id,  # <-- Добавлено
             limit=limit,
             offset=offset,
+            include_brand_model=include_brand_model,
         )
 
-    async def get_car(self, id: UUID) -> Car:
-        car = await self.car_repository.get_by_id(id)
+    async def get_car(self, id: UUID, include_brand_model: bool = True) -> Car:
+        """
+        Получение информации об автомобиле по ID с информацией о модели и бренде
+        """
+        car = await self.car_repository.get_by_id(
+            id, include_brand_model=include_brand_model
+        )
         if not car:
             raise NotFoundError(f"Автомобиль с ID {id} не найден")
         return car
