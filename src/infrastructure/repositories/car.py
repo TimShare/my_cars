@@ -172,6 +172,7 @@ class CarRepository(ICarRepository):
         model_id: Optional[UUID] = None,
         brand_id: Optional[UUID] = None,
         condition: Optional[str] = None,
+        seller_id: Optional[UUID] = None,  # <-- Добавлено
         limit: int = 100,
         offset: int = 0,
     ) -> List[CarEntity]:
@@ -189,6 +190,9 @@ class CarRepository(ICarRepository):
 
         if condition:
             filters.append(Car.condition == condition)
+
+        if seller_id:  # <-- Добавлено
+            filters.append(Car.seller_id == seller_id)
 
         if filters:
             query = query.where(and_(*filters))

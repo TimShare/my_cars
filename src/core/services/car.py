@@ -102,6 +102,7 @@ class CarService:
         model_id: Optional[UUID] = None,
         brand_id: Optional[UUID] = None,
         condition: Optional[str] = None,
+        seller_id: Optional[UUID] = None,  # <-- Добавлено
         limit: int = 100,
         offset: int = 0,
     ) -> List[Car]:
@@ -109,6 +110,7 @@ class CarService:
             model_id=model_id,
             brand_id=brand_id,
             condition=condition,
+            seller_id=seller_id,  # <-- Добавлено
             limit=limit,
             offset=offset,
         )

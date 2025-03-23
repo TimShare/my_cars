@@ -1,149 +1,107 @@
-from typing import List
+from typing import List, Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Request, Response, Query, HTTPException, status
 from interface.dependencies import get_car_service
-from interface.schemas.car import (
-    BrandCreate, BrandUpdate, BrandResponse,
-    ModelCreate, ModelUpdate, ModelResponse,
-    CarResponse, CarUpdate
-)
+from interface.schemas.car import CarCreate, CarUpdate, CarResponse
 from core.services import CarService
-from core.entites import Brand, Model
+from core.entites import Car
 from interface.routers.decorator import require_scopes
 
-router = APIRouter(prefix="/admin/cars", tags=["admin_cars"])
+router = APIRouter(prefix="/cars", tags=["cars"])
 
-# Административные эндпоинты для брендов
-@router.post("/brands", response_model=BrandResponse, status_code=201)
-@require_scopes(["admin:car:create"])
-async def admin_create_brand(
-    brand_data: BrandCreate,
+
+# Личные объявления пользователя (требуют авторизации)
+@router.post("", response_model=CarResponse, status_code=201)
+@require_scopes(["car:create"])
+async def create_car(
+    car_data: CarCreate,
     request: Request,
     response: Response,
-    car_service: CarService = Depends(get_car_service)
+    car_service: CarService = Depends(get_car_service),
 ):
-    """Создание нового бренда (только администратор)"""
-    brand = Brand(**brand_data.model_dump())
-    created_brand = await car_service.create_brand(brand)
-    return BrandResponse.model_validate(created_brand)
+    """Создание нового объявления о продаже автомобиля"""
+    # Устанавливаем текущего пользователя как продавца
+    if hasattr(request.state, "payload"):
+        car_data.seller_id = UUID(request.state.payload.get("sub"))
+
+    car = Car(**car_data.model_dump())
+    created_car = await car_service.create_car(car)
+    return CarResponse.model_validate(created_car)
 
 
-@router.put("/brands/{brand_id}", response_model=BrandResponse)
-@require_scopes(["admin:car:update"])
-async def admin_update_brand(
-    brand_id: UUID,
-    brand_data: BrandUpdate,
-    request: Request,
-    response: Response,
-    car_service: CarService = Depends(get_car_service)
-):
-    """Обновление информации о бренде (только администратор)"""
-    # Получаем текущие данные
-    current_brand = await car_service.get_brand(brand_id)
-    
-    # Обновляем только переданные поля
-    update_data = brand_data.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(current_brand, field, value)
-    
-    updated_brand = await car_service.update_brand(current_brand)
-    return BrandResponse.model_validate(updated_brand)
-
-
-@router.delete("/brands/{brand_id}", status_code=204)
-@require_scopes(["admin:car:delete"])
-async def admin_delete_brand(
-    brand_id: UUID,
-    request: Request,
-    response: Response,
-    car_service: CarService = Depends(get_car_service)
-):
-    """Удаление бренда (только администратор)"""
-    await car_service.delete_brand(brand_id)
-    return None
-
-
-# Административные эндпоинты для моделей
-@router.post("/models", response_model=ModelResponse, status_code=201)
-@require_scopes(["admin:car:create"])
-async def admin_create_model(
-    model_data: ModelCreate,
-    request: Request,
-    response: Response,
-    car_service: CarService = Depends(get_car_service)
-):
-    """Создание новой модели (только администратор)"""
-    model = Model(**model_data.model_dump())
-    created_model = await car_service.create_model(model)
-    return ModelResponse.model_validate(created_model)
-
-
-@router.put("/models/{model_id}", response_model=ModelResponse)
-@require_scopes(["admin:car:update"])
-async def admin_update_model(
-    model_id: UUID,
-    model_data: ModelUpdate,
-    request: Request,
-    response: Response,
-    car_service: CarService = Depends(get_car_service)
-):
-    """Обновление информации о модели (только администратор)"""
-    # Получаем текущие данные
-    current_model = await car_service.get_model(model_id)
-    
-    # Обновляем только переданные поля
-    update_data = model_data.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(current_model, field, value)
-    
-    updated_model = await car_service.update_model(current_model)
-    return ModelResponse.model_validate(updated_model)
-
-
-@router.delete("/models/{model_id}", status_code=204)
-@require_scopes(["admin:car:delete"])
-async def admin_delete_model(
-    model_id: UUID,
-    request: Request,
-    response: Response,
-    car_service: CarService = Depends(get_car_service)
-):
-    """Удаление модели (только администратор)"""
-    await car_service.delete_model(model_id)
-    return None
-
-
-# Административные эндпоинты для управления любыми объявлениями
-@router.put("/listings/{car_id}", response_model=CarResponse)
-@require_scopes(["admin:car:update"])
-async def admin_update_car(
+@router.put("/{car_id}", response_model=CarResponse)
+@require_scopes(["car:update"])
+async def update_car(
     car_id: UUID,
     car_data: CarUpdate,
     request: Request,
     response: Response,
-    car_service: CarService = Depends(get_car_service)
+    car_service: CarService = Depends(get_car_service),
 ):
-    """Обновление любого объявления (только администратор)"""
+    """Обновление своего объявления о продаже автомобиля"""
     # Получаем текущие данные
     current_car = await car_service.get_car(car_id)
-    
+
+    # Проверяем, принадлежит ли объявление текущему пользователю
+    if hasattr(request.state, "payload"):
+        user_id = UUID(request.state.payload.get("sub"))
+        if (
+            current_car.seller_id != user_id
+            and "admin" not in request.state.payload.get("scopes", [])
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Вы можете редактировать только свои объявления",
+            )
+
     # Обновляем только переданные поля
     update_data = car_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(current_car, field, value)
-    
+
     updated_car = await car_service.update_car(current_car)
     return CarResponse.model_validate(updated_car)
 
 
-@router.delete("/listings/{car_id}", status_code=204)
-@require_scopes(["admin:car:delete"])
-async def admin_delete_car(
+@router.delete("/{car_id}", status_code=204)
+@require_scopes(["car:delete"])
+async def delete_car(
     car_id: UUID,
     request: Request,
     response: Response,
-    car_service: CarService = Depends(get_car_service)
+    car_service: CarService = Depends(get_car_service),
 ):
-    """Удаление любого объявления (только администратор)"""
+    """Удаление своего объявления о продаже автомобиля"""
+    # Получаем текущие данные
+    current_car = await car_service.get_car(car_id)
+
+    # Проверяем, принадлежит ли объявление текущему пользователю
+    if hasattr(request.state, "payload"):
+        user_id = UUID(request.state.payload.get("sub"))
+        if (
+            current_car.seller_id != user_id
+            and "admin" not in request.state.payload.get("scopes", [])
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Вы можете удалять только свои объявления",
+            )
+
     await car_service.delete_car(car_id)
     return None
+
+
+@router.get("/my", response_model=List[CarResponse])
+@require_scopes(["car:read"])
+async def get_my_cars(
+    request: Request,
+    response: Response,
+    car_service: CarService = Depends(get_car_service),
+):
+    """Получение списка собственных объявлений пользователя"""
+    if hasattr(request.state, "payload"):
+        user_id = UUID(request.state.payload.get("sub"))
+        # Здесь нужно будет добавить фильтр по seller_id в сервис
+        cars = await car_service.get_all_cars(seller_id=user_id)
+        return [CarResponse.model_validate(car) for car in cars]
+    return []
