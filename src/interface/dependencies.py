@@ -5,8 +5,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from infrastructure.postgres_db import database
-from core.services import AuthService
-from infrastructure.repositories import AuthRepository, BannedRefreshTokenRepository
+from core.services import AuthService, CarService
+from infrastructure.repositories import (
+    AuthRepository,
+    BannedRefreshTokenRepository,
+    BrandRepository,
+    ModelRepository,
+    CarRepository,
+)
 from settings import get_settings
 
 
@@ -14,6 +20,14 @@ async def get_auth_service(session: AsyncSession = Depends(database.get_db_sessi
     auth_repository = AuthRepository(session)
     token_repository = BannedRefreshTokenRepository(session)
     service = AuthService(auth_repository, token_repository)
+    yield service
+
+
+async def get_car_service(session: AsyncSession = Depends(database.get_db_session)):
+    car_repository = CarRepository(session)
+    brand_repository = BrandRepository(session)
+    model_repository = ModelRepository(session)
+    service = CarService(car_repository, brand_repository, model_repository)
     yield service
 
 
