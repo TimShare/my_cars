@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Request, Response, Path
 from typing import List
 from uuid import UUID
 from interface.dependencies import get_auth_service
-from interface.schemas.auth import ScopesRequest, ScopesResponse, UserResponse
+from interface.schemas import ScopesRequest, ScopesResponse, UserResponse
 from core.services import AuthService
 from interface.routers.decorator import require_scopes
 
