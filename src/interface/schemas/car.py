@@ -47,7 +47,7 @@ class ModelCreate(ModelBase):
 class ModelUpdate(ModelBase):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     brand_id: Optional[UUID] = None
-    
+
     @field_validator("year_from", "year_to")
     def validate_year(cls, v):
         if v is not None and (v < 1900 or v > datetime.now().year + 5):
@@ -78,7 +78,7 @@ class CarBase(BaseModel):
     engine_volume: Optional[float] = Field(None, ge=0, le=20)
     power: Optional[int] = Field(None, ge=0, le=2000)
     description: Optional[str] = None
-    vin: Optional[str] = Field(None, min_length=17, max_length=17)
+    vin: Optional[str] = Field(None, min_length=10, max_length=17)
     is_sold: bool = False
     photos: List[str] = []
 
