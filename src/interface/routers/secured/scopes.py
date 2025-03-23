@@ -6,7 +6,7 @@ from interface.schemas import ScopesRequest, ScopesResponse, UserResponse
 from core.services import AuthService
 from interface.routers.decorator import require_scopes
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/scopes", tags=["scopes"])
 
 
 @router.post("/users/{user_id}/scopes", response_model=ScopesResponse)

@@ -37,18 +37,7 @@ async def get_all_cars_public(
     return [CarDetailResponse.model_validate(car) for car in cars]
 
 
-@router.get("/{car_id}", response_model=CarDetailResponse)
-async def get_car_public(
-    car_id: UUID,
-    request: Request,
-    response: Response,
-    car_service: CarService = Depends(get_car_service),
-):
-    """Публичное получение информации об автомобиле по ID"""
-    car = await car_service.get_car(car_id, include_brand_model=True)
-    return CarDetailResponse.model_validate(car)
-
-
+# Статические маршруты (для брендов)
 @router.get("/brands", response_model=List[BrandResponse])
 async def get_all_brands_public(
     request: Request,
@@ -72,6 +61,7 @@ async def get_brand_public(
     return BrandResponse.model_validate(brand)
 
 
+# Статические маршруты (для моделей)
 @router.get("/models", response_model=List[ModelResponse])
 async def get_all_models_public(
     request: Request,
@@ -94,3 +84,16 @@ async def get_model_public(
     """Публичное получение информации о модели по ID"""
     model = await car_service.get_model(model_id)
     return ModelResponse.model_validate(model)
+
+
+# Маршрут с параметром должен быть определен после более конкретных маршрутов
+@router.get("/{car_id}", response_model=CarDetailResponse)
+async def get_car_public(
+    car_id: UUID,
+    request: Request,
+    response: Response,
+    car_service: CarService = Depends(get_car_service),
+):
+    """Публичное получение информации об автомобиле по ID"""
+    car = await car_service.get_car(car_id, include_brand_model=True)
+    return CarDetailResponse.model_validate(car)
