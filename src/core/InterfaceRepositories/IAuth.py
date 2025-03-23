@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import List
 from uuid import UUID
 from core.entites import User, AccessToken, RefreshToken, Token
 
@@ -26,6 +27,34 @@ class IAuthRepository(ABC):
     async def update_user(self, user: User) -> User:
         """
         Update an existing user.
+        """
+        pass
+
+    @abstractmethod
+    async def add_scopes(self, user_id: str, scopes: List[str]) -> User:
+        """
+        Add new scopes to a user.
+        """
+        pass
+
+    @abstractmethod
+    async def update_scopes(self, user_id: str, scopes: List[str]) -> User:
+        """
+        Replace all scopes of a user.
+        """
+        pass
+
+    @abstractmethod
+    async def remove_scopes(self, user_id: str, scopes: List[str]) -> User:
+        """
+        Remove specified scopes from a user.
+        """
+        pass
+
+    @abstractmethod
+    async def get_user_scopes(self, user_id: str) -> List[str]:
+        """
+        Get current scopes of a user.
         """
         pass
 

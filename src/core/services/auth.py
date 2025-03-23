@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from typing import List
 from uuid import UUID, uuid4
 from core.entites import User, AccessToken, RefreshToken, Token
 from core.InterfaceRepositories.IAuth import (
@@ -207,3 +208,44 @@ class AuthService:
         except jwt.PyJWTError:
             return None
 
+    # Добавим новые методы в класс AuthService
+
+    async def add_scopes(self, user_id: str, scopes: List[str]) -> User:
+        """
+        Добавляет новые права пользователю.
+        """
+        user = await self.auth_repository.get_user(id=UUID(user_id))
+        if not user:
+            raise NotFoundError("Пользователь не найден")
+
+        return await self.auth_repository.add_scopes(user_id, scopes)
+
+    async def update_scopes(self, user_id: str, scopes: List[str]) -> User:
+        """
+        Полностью заменяет права пользователя.
+        """
+        user = await self.auth_repository.get_user(id=UUID(user_id))
+        if not user:
+            raise NotFoundError("Пользователь не найден")
+
+        return await self.auth_repository.update_scopes(user_id, scopes)
+
+    async def remove_scopes(self, user_id: str, scopes: List[str]) -> User:
+        """
+        Удаляет указанные права у пользователя.
+        """
+        user = await self.auth_repository.get_user(id=UUID(user_id))
+        if not user:
+            raise NotFoundError("Пользователь не найден")
+
+        return await self.auth_repository.remove_scopes(user_id, scopes)
+
+    async def get_user_scopes(self, user_id: str) -> List[str]:
+        """
+        Получает текущие права пользователя.
+        """
+        user = await self.auth_repository.get_user(id=UUID(user_id))
+        if not user:
+            raise NotFoundError("Пользователь не найден")
+
+        return await self.auth_repository.get_user_scopes(user_id)

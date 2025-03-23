@@ -20,6 +20,10 @@ from interface.schemas.car import (
     CarResponse,
     CarDetailResponse,
 )
+from interface.schemas.scopes import (
+    ScopesRequest,
+    ScopesResponse,
+)
 
 __all__ = [
     "UserBase",
@@ -40,4 +44,6 @@ __all__ = [
     "CarUpdate",
     "CarResponse",
     "CarDetailResponse",
+    "ScopesRequest",
+    "ScopesResponse",
 ]

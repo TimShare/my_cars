@@ -10,6 +10,7 @@ from uuid import UUID
 def require_scopes(required_scopes: List[str]) -> Callable:
     """
     Декоратор для проверки прав доступа пользователя.
+    Администраторы (is_admin=True или имеющие scope 'admin') автоматически пропускаются.
 
     Args:
         required_scopes: Список необходимых прав доступа
@@ -30,9 +31,12 @@ def require_scopes(required_scopes: List[str]) -> Callable:
                 # Получаем payload из request.state.payload
                 payload = request.state.payload
 
-                # Проверка прав доступа
+                # Проверяем, является ли пользователь администратором
                 user_scopes = payload.get("scopes", [])
-                if not set(required_scopes).issubset(set(user_scopes)):
+                is_admin = payload.get("is_admin", False) or "admin" in user_scopes
+
+                # Если пользователь не администратор, проверяем права доступа
+                if not is_admin and not set(required_scopes).issubset(set(user_scopes)):
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail=f"Недостаточно прав доступа. Требуются: {', '.join(required_scopes)}",
